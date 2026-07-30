@@ -6,18 +6,25 @@
     treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
   };
   outputs =
-    inputs@{ flake-parts, ... }:
+    inputs@{
+      nixpkgs,
+      flake-parts,
+      treefmt-nix,
+      ...
+    }:
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [
         "x86_64-linux"
         "aarch64-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
       ];
       imports = [
-        inputs.treefmt-nix.flakeModule
+        treefmt-nix.flakeModule
       ];
-      perSystem = { ... }: {
+      perSystem = {
         treefmt.programs.nixfmt.enable = true;
       };
-      flake.lib = import ./lib { lib = inputs.nixpkgs.lib; };
+      flake.lib = import ./lib { lib = nixpkgs.lib; };
     };
 }
