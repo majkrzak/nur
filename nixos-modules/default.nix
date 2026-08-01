@@ -1,0 +1,3 @@
+{
+  buckets = ./buckets.nix;
+}

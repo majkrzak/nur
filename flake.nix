@@ -26,5 +26,6 @@
         treefmt.programs.nixfmt.enable = true;
       };
       flake.lib = import ./lib { lib = nixpkgs.lib; };
+      flake.nixosModules = import ./nixos-modules;
     };
 }
