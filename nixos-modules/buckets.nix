@@ -1,4 +1,9 @@
-{ lib, config, ... }:
+{
+  lib,
+  pkgs,
+  config,
+  ...
+}:
 let
   inherit (lib)
     mkOption
@@ -62,6 +67,7 @@ in
     ]);
   };
   config = {
+    environment.systemPackages = with pkgs; [ rclone ];
     sops.secrets = mapAttrs' (
       _: fs:
       nameValuePair fs.bucket.access_key_id {
