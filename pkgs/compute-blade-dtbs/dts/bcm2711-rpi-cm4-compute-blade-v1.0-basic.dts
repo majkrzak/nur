@@ -1,0 +1,164 @@
+/dts-v1/;
+
+#include <dt-bindings/leds/common.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/input/linux-event-codes.h>
+#include <dt-bindings/gpio/gpio.h>
+#include "bcm2711-rpi-cm4.dtsi"
+#include "bcm283x-rpi-usb-host.dtsi"
+
+/ {
+	model = "Uptime Industries Compute Blade v1.0 MK4 Basic";
+	compatible =
+		"uptime,compute-blade",
+		"raspberrypi,4-compute-module",
+		"brcm,bcm2711";
+
+	fan: fan {
+		compatible = "pwm-fan";
+		pwms = <&pwm 0 40000 0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&fan_tach_pullup>;
+		pulses-per-revolution = <2>;
+		interrupt-parent = <&gpio>;
+		interrupts = <13 IRQ_TYPE_EDGE_FALLING>;
+		#cooling-cells = <2>;
+		cooling-levels = <0 64 128 192 255>;
+		status = "okay";
+	};
+
+	keys {
+		compatible = "gpio-keys";
+		pinctrl-names = "default";
+		pinctrl-0 = <&keys_pullup>;
+		status = "okay";
+
+		key-power {
+			label = "power-button";
+			linux,code = <KEY_POWER>;
+			gpios = <&gpio 20 GPIO_ACTIVE_LOW>;
+			debounce-interval = <100>;
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		led-act {
+			label = "ACT";
+			gpios = <&gpio 42 GPIO_ACTIVE_HIGH>;
+			default-state = "keep";
+			linux,default-trigger = "heartbeat";
+		};
+
+		led-pwr {
+			label = "PWR";
+			gpios = <&expgpio 2 GPIO_ACTIVE_LOW>;
+			default-state = "keep";
+			linux,default-trigger = "default-on";
+		};
+	};
+};
+
+&gpio {
+	fan_tach_pullup: fan-tach-pullup {
+		pin-tach {
+			pins = "gpio13";
+			function = "gpio_in";
+			bias-pull-up;
+		};
+	};
+
+	keys_pullup: keys-pullup {
+		pin-key-power {
+			pins = "gpio20";
+			function = "gpio_in";
+			bias-pull-up;
+		};
+	};
+};
+
+&pwm {
+	status = "okay";
+	assigned-clock-rates = <50000000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pwm0_0_gpio12>;
+};
+
+&cpu_thermal {
+	trips {
+		fan_high: fan-high {
+			temperature = <75000>;
+			hysteresis = <5000>;
+			type = "active";
+		};
+
+		fan_mid: fan-mid {
+			temperature = <65000>;
+			hysteresis = <5000>;
+			type = "active";
+		};
+
+		fan_low: fan-low {
+			temperature = <55000>;
+			hysteresis = <5000>;
+			type = "active";
+		};
+
+		fan_idle: fan-idle {
+			temperature = <0>;
+			hysteresis = <0>;
+			type = "active";
+		};
+	};
+
+	cooling-maps {
+		map-idle {
+			trip = <&fan_idle>;
+			cooling-device = <&fan 1 1>;
+		};
+
+		map-low {
+			trip = <&fan_low>;
+			cooling-device = <&fan 1 2>;
+		};
+
+		map-mid {
+			trip = <&fan_mid>;
+			cooling-device = <&fan 2 3>;
+		};
+
+		map-high {
+			trip = <&fan_high>;
+			cooling-device = <&fan 3 4>;
+		};
+	};
+};
+
+&phy1 {
+	leds {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		led@1 {
+			reg = <1>;
+			color = <LED_COLOR_ID_GREEN>;
+			function = LED_FUNCTION_LAN;
+			default-state = "keep";
+		};
+
+		led@2 {
+			reg = <2>;
+			color = <LED_COLOR_ID_AMBER>;
+			function = LED_FUNCTION_LAN;
+			default-state = "keep";
+		};
+	};
+};
+
+&uart0 { status = "disabled"; };
+&sdhci { status = "disabled"; };
+&v3d { status = "disabled"; };
+&vc4 { status = "disabled"; };
+&vchiq { status = "disabled"; };
+&vec  { status = "disabled"; };

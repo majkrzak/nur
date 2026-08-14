@@ -22,8 +22,9 @@
       imports = [
         treefmt-nix.flakeModule
       ];
-      perSystem = {
+      perSystem = { pkgs, lib, ... }: {
         treefmt.programs.nixfmt.enable = true;
+        packages = lib.filterAttrs (_: v: lib.isDerivation v) (import ./default.nix { inherit pkgs; });
       };
       flake.lib = import ./lib { lib = nixpkgs.lib; };
       flake.nixosModules = import ./nixos-modules;
