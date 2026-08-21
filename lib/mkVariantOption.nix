@@ -7,12 +7,13 @@ let
     mkOption
     toList
     optionalAttrs
+    attrNames
     id
     ;
   inherit (lib.types)
     nullOr
     listOf
-    str
+    enum
     ;
 in
 {
@@ -29,7 +30,9 @@ in
   readOnly ? false,
 }:
 mkOption {
-  type = (if nullable then nullOr else id) ((if multiple then listOf else id) str);
+  type = (if nullable then nullOr else id) (
+    (if multiple then listOf else id) (enum (attrNames source))
+  );
   apply =
     value:
     optionalAttrs (value != null) (
