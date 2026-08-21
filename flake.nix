@@ -28,5 +28,6 @@
       };
       flake.lib = import ./lib { lib = nixpkgs.lib; };
       flake.nixosModules = import ./nixos-modules;
+      flake.homeModules = import ./home-modules;
     };
 }

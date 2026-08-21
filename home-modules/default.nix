@@ -1,0 +1,3 @@
+{
+  persist = ./persist/default.nix;
+}
