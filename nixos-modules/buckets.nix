@@ -165,6 +165,7 @@ in
         svc:
         nameValuePair "bucketdav-${svc.name}" {
           wantedBy = [ "multi-user.target" ];
+          wants = [ "network-online.target" ];
           after = [ "network-online.target" ];
           serviceConfig = {
             Restart = "on-failure";
