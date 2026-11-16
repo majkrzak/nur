@@ -13,20 +13,26 @@ let
     filter
     unique
     nameValuePair
+    optionalString
     ;
   inherit (lib.types)
     str
     path
+    port
+    bool
     nullOr
     attrsOf
     submodule
     ;
   sopsCfg = config.sops;
 
+  webdavServices = filter (svc: svc.bucket.name != null) (attrValues config.services.webdav);
+
   buckets = unique (
     filter (bucket: bucket.name != null) (
       (map (fs: fs.bucket) (attrValues config.fileSystems))
       ++ (map (cert: cert.bucket) (attrValues config.security.acme.certs))
+      ++ (map (svc: svc.bucket) webdavServices)
     )
   );
   bucketOps = {
@@ -94,6 +100,40 @@ in
       )
     ]);
   };
+  options.services.webdav = mkOption {
+    type = attrsOf (submodule [
+      (
+        { ... }:
+        {
+          options = {
+            bucket = bucketOps;
+            listen = mkOption {
+              type = str;
+              default = "[::1]";
+              description = "Address to serve the WebDAV endpoint on.";
+            };
+            port = mkOption {
+              type = port;
+              default = 8098;
+              description = "Port to serve the WebDAV endpoint on.";
+            };
+            prefix = mkOption {
+              type = nullOr str;
+              default = null;
+              description = "URL prefix passed as rclone --baseurl.";
+            };
+            readOnly = mkOption {
+              type = bool;
+              default = true;
+              description = "Serve the bucket read-only.";
+            };
+          };
+        }
+      )
+    ]);
+    default = { };
+    description = "Serve S3 buckets over WebDAV using rclone.";
+  };
   config = {
     environment.systemPackages = with pkgs; [ rclone ];
     sops.secrets = listToAttrs (
@@ -122,6 +162,28 @@ in
           '';
         }
       ) buckets
+    );
+    systemd.services = listToAttrs (
+      map (
+        svc:
+        nameValuePair "webdav-${svc.bucket.name}" {
+          wantedBy = [ "multi-user.target" ];
+          after = [ "network-online.target" ];
+          serviceConfig = {
+            Restart = "on-failure";
+            ExecStart = ''
+              ${pkgs.rclone}/bin/rclone \
+                --config ${sopsCfg.templates."${svc.bucket.name}-rclone.conf".path} \
+                serve webdav s3:${svc.bucket.name} \
+                --addr "${svc.listen}:${toString svc.port}" \
+                ${optionalString (svc.prefix != null) "--baseurl ${svc.prefix}"} \
+                ${optionalString svc.readOnly "--read-only"} \
+                --no-modtime \
+                --vfs-fast-fingerprint
+            '';
+          };
+        }
+      ) webdavServices
     );
   };
 }
