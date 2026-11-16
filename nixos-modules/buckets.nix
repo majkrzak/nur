@@ -26,13 +26,11 @@ let
     ;
   sopsCfg = config.sops;
 
-  webdavServices = filter (svc: svc.bucket.name != null) (attrValues config.services.webdav);
-
   buckets = unique (
     filter (bucket: bucket.name != null) (
       (map (fs: fs.bucket) (attrValues config.fileSystems))
       ++ (map (cert: cert.bucket) (attrValues config.security.acme.certs))
-      ++ (map (svc: svc.bucket) webdavServices)
+      ++ (attrValues config.services.bucketdav)
     )
   );
   bucketOps = {
@@ -100,13 +98,12 @@ in
       )
     ]);
   };
-  options.services.webdav = mkOption {
+  options.services.bucketdav = mkOption {
     type = attrsOf (submodule [
       (
         { ... }:
         {
-          options = {
-            bucket = bucketOps;
+          options = bucketOps // {
             listen = mkOption {
               type = str;
               default = "[::1]";
@@ -166,15 +163,15 @@ in
     systemd.services = listToAttrs (
       map (
         svc:
-        nameValuePair "webdav-${svc.bucket.name}" {
+        nameValuePair "bucketdav-${svc.name}" {
           wantedBy = [ "multi-user.target" ];
           after = [ "network-online.target" ];
           serviceConfig = {
             Restart = "on-failure";
             ExecStart = ''
               ${pkgs.rclone}/bin/rclone \
-                --config ${sopsCfg.templates."${svc.bucket.name}-rclone.conf".path} \
-                serve webdav s3:${svc.bucket.name} \
+                --config ${sopsCfg.templates."${svc.name}-rclone.conf".path} \
+                serve webdav s3:${svc.name} \
                 --addr "${svc.listen}:${toString svc.port}" \
                 ${optionalString (svc.prefix != null) "--baseurl ${svc.prefix}"} \
                 ${optionalString svc.readOnly "--read-only"} \
@@ -183,7 +180,7 @@ in
             '';
           };
         }
-      ) webdavServices
+      ) (attrValues config.services.bucketdav)
     );
   };
 }
