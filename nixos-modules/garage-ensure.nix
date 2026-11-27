@@ -38,7 +38,6 @@ in
           }
         )
       );
-      default = { };
     };
     ensureKeys = mkOption {
       type = attrsOf (
@@ -85,7 +84,6 @@ in
           }
         )
       );
-      default = { };
     };
   };
   config = mkIf (cfg.enable && (cfg.ensureBuckets != { } || cfg.ensureKeys != { })) {
