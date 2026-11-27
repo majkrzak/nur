@@ -20,22 +20,41 @@ let
   cfg = config.services.garage;
 in
 {
-  options.services.garage.ensureKeys = mkOption {
-    type = attrsOf (
-      submodule (
-        { name, ... }: {
-          options = {
-            name = mkOption {
-              type = str;
-              default = name;
+  options.services.garage = {
+    ensureBuckets = mkOption {
+      type = attrsOf (
+        submodule (
+          { name, ... }: {
+            options = {
+              name = mkOption {
+                type = str;
+                readOnly = true;
+                default = name;
+              };
             };
-          };
-        }
-      )
-    );
-    default = { };
+          }
+        )
+      );
+      default = { };
+    };
+    ensureKeys = mkOption {
+      type = attrsOf (
+        submodule (
+          { name, ... }: {
+            options = {
+              name = mkOption {
+                type = str;
+                readOnly = true;
+                default = name;
+              };
+            };
+          }
+        )
+      );
+      default = { };
+    };
   };
-  config = mkIf (cfg.enable && cfg.ensureKeys != { }) {
+  config = mkIf (cfg.enable && (cfg.ensureBuckets != { } || cfg.ensureKeys != { })) {
     systemd.services.garage-ensure = {
       wantedBy = [ "multi-user.target" ];
       requires = [ "garage.service" ];
@@ -48,8 +67,13 @@ in
         cfg.package
       ];
       script = ''
+        ${concatMapStrings (bucket: ''
+          if ! garage bucket info ${escapeShellArg bucket.name} >/dev/null 2>&1; then
+            garage bucket create ${escapeShellArg bucket.name} >/dev/null
+          fi
+        '') (attrValues cfg.ensureBuckets)}
         ${concatMapStrings (key: ''
-          if ! garage key info ${escapeShellArg key.name} --key-id >/dev/null 2>&1; then
+          if ! garage key info ${escapeShellArg key.name} >/dev/null 2>&1; then
             garage key create ${escapeShellArg key.name} >/dev/null
           fi
         '') (attrValues cfg.ensureKeys)}
